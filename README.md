@@ -1,2 +1,2 @@
-# intelehealth-path-shr-application-layer
-Repository for Path SHR Application Layer
+# intelehealth-fhir-shr-application-layer
+Repository for FHIR SHR Application Layer
