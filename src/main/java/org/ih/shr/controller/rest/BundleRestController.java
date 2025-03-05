@@ -9,6 +9,7 @@ import org.ih.shr.service.BundleService;
 import org.json.JSONException;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -25,7 +26,7 @@ public class BundleRestController {
 	@Autowired
 	private BundleService bundleService;
 
-	@PostMapping("/save")
+	@PostMapping(value="/save", produces = MediaType.APPLICATION_JSON_VALUE)
 	public ResponseEntity<?> save(@RequestBody String bundleString)
 			throws ParseException {
 		Bundle theBundle = bundleService.convertToBundle(bundleString);
@@ -34,7 +35,7 @@ public class BundleRestController {
 				HttpStatus.OK);
 	}
 
-	@GetMapping("/{resourceType}")
+	@GetMapping(value="/{resourceType}", produces = MediaType.APPLICATION_JSON_VALUE)
 	public ResponseEntity<?> searchPatient(
 			@PathVariable("resourceType") String resourceType,
 			@RequestParam Map<String, String> reqParam)

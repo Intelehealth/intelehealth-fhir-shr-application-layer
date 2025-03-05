@@ -1,5 +1,6 @@
 package org.ih.shr.search.param;
 
+import java.net.URLEncoder;
 import java.util.Map;
 
 import org.springframework.web.bind.annotation.RequestParam;
@@ -9,9 +10,10 @@ public class ReuestParam {
 	public static String toQueryParam(@RequestParam Map<String, String> reqParam) {
 		StringBuilder queryParam = new StringBuilder();
 		for (Map.Entry<String, String> entry : reqParam.entrySet()) {
-			queryParam.append("&" + entry.getKey() + "=" + entry.getValue());
+			queryParam.append("&" + entry.getKey() + "=" + URLEncoder.encode(entry.getValue()));
 		}
 		String theSearchParamString = queryParam.substring(1);
+		System.err.println(theSearchParamString);
 		return theSearchParamString;
 	}
 

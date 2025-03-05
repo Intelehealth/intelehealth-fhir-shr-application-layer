@@ -19,8 +19,7 @@ public class SecurityConfig {
 
 	@Bean
 	public InMemoryUserDetailsManager userDetailsService() {
-		UserDetails user = User.withUsername("openmrs")
-				.password(passwordEncoder().encode("Admin123"))
+		UserDetails user = User.withUsername("openmrs").password(passwordEncoder().encode("Admin123"))
 				.roles("USER_ROLE").build();
 		return new InMemoryUserDetailsManager(user);
 	}
@@ -32,9 +31,8 @@ public class SecurityConfig {
 
 	@Bean
 	public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
-		http.authorizeRequests().antMatchers("/public").permitAll()
-				.anyRequest().authenticated().and().httpBasic()
-				.authenticationEntryPoint(authenticationEntryPoint);
+		http.csrf().disable().authorizeRequests().antMatchers("/public").permitAll().anyRequest().authenticated().and()
+				.httpBasic().authenticationEntryPoint(authenticationEntryPoint);
 		return http.build();
 	}
 }

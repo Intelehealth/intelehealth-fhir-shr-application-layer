@@ -27,4 +27,5 @@ public abstract class CommonProperties {
 	@Value("${opensrp.server.password}")
 	protected String opensrpPassword;
 
+
 }

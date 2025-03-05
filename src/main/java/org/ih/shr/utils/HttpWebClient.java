@@ -6,47 +6,54 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import reactor.core.publisher.Mono;
 
 public class HttpWebClient {
 
+	static ExchangeStrategies exchangeStrategies = ExchangeStrategies.builder()
+			.codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(10000000)).build();
 	
-	static ExchangeStrategies exchangeStrategies = ExchangeStrategies
-			.builder()
-			.codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(
-					10000000)).build();
+	public static String get(String baseURL, String APIURL, String username, String password)
+			throws UnsupportedEncodingException {
+		System.err.println(baseURL + "/" + APIURL);
+		WebClient webClient = WebClient.builder().baseUrl(baseURL)
+				.defaultHeaders(httpHeaders -> httpHeaders.setBasicAuth(username, password))
+				.exchangeStrategies(exchangeStrategies).build();
+		try {
+			return webClient.get().uri(APIURL)
 
-	
-	
-	
-	
-	
-	
-	
-	public static String post(String baseURL, String APIURL, String username, String password, String paylaod)
-		    throws UnsupportedEncodingException {
-			
-			WebClient webClient = WebClient.builder().baseUrl(baseURL)
-			       // .defaultHeaders(httpHeaders -> httpHeaders.setBasicAuth(username, password))
-			        .exchangeStrategies(exchangeStrategies).build();
-			return webClient.post().uri(APIURL).
-					header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-			        .body(Mono.just(paylaod), String.class).retrieve().bodyToMono(String.class).block();
-			
+					.headers(httpHeaders -> httpHeaders.setBasicAuth(username, password)).retrieve()
+					.bodyToMono(String.class).block();
+		} catch (WebClientResponseException e) {
+			System.err.println(e);
+			System.err.println(e.getStatusCode());
+			System.err.println(e.getResponseBodyAsString());
+			throw e;
 		}
-	
-	public static String postWithBasicAuth(String baseURL, String APIURL, String username, String password, String paylaod)
-		    throws UnsupportedEncodingException {
-			System.err.println(baseURL+""+APIURL+"-"+username+"-"+password+"-"+paylaod);
-			WebClient webClient = WebClient.builder().baseUrl(baseURL)
-			       .defaultHeaders(httpHeaders -> httpHeaders.setBasicAuth(username, password))
-			        .exchangeStrategies(exchangeStrategies).build();
-			return webClient.post().uri(APIURL).
-					header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-			        .body(Mono.just(paylaod), String.class).retrieve().bodyToMono(String.class).block();
-			
 	}
-	
-		
+
+	public static String post(String baseURL, String APIURL, String username, String password, String paylaod)
+			throws UnsupportedEncodingException {
+
+		WebClient webClient = WebClient.builder().baseUrl(baseURL)
+				// .defaultHeaders(httpHeaders -> httpHeaders.setBasicAuth(username, password))
+				.exchangeStrategies(exchangeStrategies).build();
+		return webClient.post().uri(APIURL).header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+				.body(Mono.just(paylaod), String.class).retrieve().bodyToMono(String.class).block();
+
+	}
+
+	public static String postWithBasicAuth(String baseURL, String APIURL, String username, String password,
+			String paylaod) throws UnsupportedEncodingException {
+		System.err.println(baseURL + "" + APIURL + "-" + username + "-" + password + "-" + paylaod);
+		WebClient webClient = WebClient.builder().baseUrl(baseURL)
+				.defaultHeaders(httpHeaders -> httpHeaders.setBasicAuth(username, password))
+				.exchangeStrategies(exchangeStrategies).build();
+		return webClient.post().uri(APIURL).header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+				.body(Mono.just(paylaod), String.class).retrieve().bodyToMono(String.class).block();
+
+	}
+
 }

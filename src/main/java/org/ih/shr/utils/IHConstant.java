@@ -13,5 +13,14 @@ public abstract class IHConstant {
 	protected String gofrOpenhimURL;
 	@Value("${gofr.openhim.clientid.password.basic.auth}")
 	protected String gofrOpenhimAuthentication;
+	
+	public String[] getOpencrOpenhimCredentials() {
+		return opencrOpenhimAuthentication.split(":");
+	}
+	@Value("${MPI.CODING}")
+	protected String MPI_CODING;
+	
+	@Value("${CENTRAL.FHIR}")
+	protected String CENTRAL_FHIR;
 
 }
