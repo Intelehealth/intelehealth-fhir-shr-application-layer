@@ -17,9 +17,7 @@ public abstract class IHConstant {
 	public String[] getOpencrOpenhimCredentials() {
 		return opencrOpenhimAuthentication.split(":");
 	}
-	@Value("${MPI.CODING}")
-	protected String MPI_CODING;
-	
+
 	@Value("${CENTRAL.FHIR}")
 	protected String CENTRAL_FHIR;
 
