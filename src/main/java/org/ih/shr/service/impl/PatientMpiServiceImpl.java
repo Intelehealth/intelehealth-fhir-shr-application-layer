@@ -36,128 +36,77 @@ public class PatientMpiServiceImpl extends IHConstant implements PatientMpiServi
 
 	@Override
 	public String sendPatient(String bundleString) throws UnsupportedEncodingException {
-		Bundle bundle = bundleService.convertToBundle(bundleString);
+	    Bundle bundle = bundleService.convertToBundle(bundleString);
 
-		if (!hasMPI(bundle)) {
-			for (BundleEntryComponent bundleEntry : bundle.getEntry()) {
+	    // Case 1: If bundle already has MPI, just update
+	    if (hasMPI(bundle)) {
+	        String mpiId = getMPI(bundle);
+	        return updatePatientWithId(bundle, mpiId);
+	    }
 
-				Resource resource = (Resource) bundleEntry.getResource();
-				Patient patient = (Patient) bundleEntry.getResource();
-				// resource.setId("");
+	    // Case 2 & 3: Process each entry
+	    for (BundleEntryComponent bundleEntry : bundle.getEntry()) {
+	        Patient patient = (Patient) bundleEntry.getResource();
 
-				Bundle searchBundle = searchBundle(patient);
-				String searchBundleFirstItemResourceId = extractResourceId(searchBundle);
-				System.err.println("Search Bundle Resource ID: " + searchBundleFirstItemResourceId);
+	        Bundle searchBundle = searchBundle(patient);
+	        String mpiId = null;
 
-				String mpiId = null;
+	        // Extract MPI if available from search
+	        if (hasMPI(searchBundle)) {
+	            mpiId = getMPI(searchBundle);
+	        } else {
+	            mpiId = extractResourceId(searchBundle);
+	        }
 
-				if (!hasMPI(searchBundle) && searchBundleFirstItemResourceId != null) {
-					mpiId = searchBundleFirstItemResourceId;
-				} else if (hasMPI(searchBundle)) {
-					mpiId = getMPI(searchBundle);
-				}
+	        // Case 2: MPI already exists from search
+	        if (mpiId != null) {
+	            patient.setId(mpiId);
+	            patient = mergeIdentifier(patient, searchBundle);
+	            if (!hasMPI(searchBundle)) {
+	                patient.getIdentifier().add(getNewMPIIdentifierWithMpiID(bundle, mpiId));
+	            }
+	            return updatePatientWithId(patient, mpiId);
+	        }
 
-				if (mpiId == null) {
+	        // Case 3: No MPI, need to create and then update with assigned ID
+	        Bundle createTransaction = new Bundle();
+	        createTransaction.setType(Bundle.BundleType.TRANSACTION);
+	        createTransaction.addEntry()
+	            .setResource(patient)
+	            .getRequest().setMethod(Bundle.HTTPVerb.POST).setUrl("Patient");
 
-					Bundle transactionBundleOne = new Bundle();
-					transactionBundleOne.setType(Bundle.BundleType.TRANSACTION);
+	        Bundle createResponse = firFhirConfig.getOpenCRFhirContext().transaction()
+	                .withBundle(createTransaction).execute();
 
-					Bundle.BundleEntryComponent component = transactionBundleOne.addEntry();
-					component.getRequest().setUrl(null).setMethod(Bundle.HTTPVerb.POST);
-					component.setResource(resource);
+	        mpiId = extractResponseId(createResponse);
+	        if (mpiId == null) throw new RuntimeException("Failed to create patient and retrieve ID");
 
-					Bundle bundle1stResponse = firFhirConfig.getOpenCRFhirContext().transaction()
-							.withBundle(transactionBundleOne).execute();
+	        // Update Patient with MPI identifier
+	        patient.setId(mpiId);
+	        patient.getIdentifier().add(getNewMPIIdentifierWithMpiID(bundle, mpiId));
 
-					String payload = fhirContext.newJsonParser().setPrettyPrint(true)
-							.encodeResourceToString(bundle1stResponse);
+	        return updatePatientWithId(patient, mpiId);
+	    }
 
-					// End of first transaction in openCR/central @FHIR server to get the resourceId
-
-					System.err.println("DDD>>>>>> : payload >>> " + payload);
-
-					mpiId = extractResponseId(bundle1stResponse);
-
-					System.err.println("DDD>>>>>> : mpiId: " + mpiId);
-
-					Bundle transactionBundleTwo = new Bundle();
-					transactionBundleTwo.setType(Bundle.BundleType.TRANSACTION);
-					patient.setId(mpiId);
-					patient.getIdentifier().add(getNewMPIIdentifierWithMpiID(bundle, mpiId));
-
-					Bundle.BundleEntryComponent componentTwo = transactionBundleTwo.addEntry();
-					componentTwo.getRequest().setUrl(resource.fhirType() + "/" + mpiId).setMethod(Bundle.HTTPVerb.PUT);
-					componentTwo.setResource(patient);
-
-					payload = fhirContext.newJsonParser().setPrettyPrint(true)
-							.encodeResourceToString(transactionBundleTwo);
-
-					Bundle bundle2ndResponse = firFhirConfig.getOpenCRFhirContext().transaction()
-							.withBundle(transactionBundleTwo).execute();
-
-					payload = fhirContext.newJsonParser().setPrettyPrint(true)
-							.encodeResourceToString(transactionBundleTwo);
-
-					System.err.println("DDD>>>>>> : payload" + payload);
-
-					return payload;
-
-				} else {
-					Bundle transactionBundleTwo = new Bundle();
-					transactionBundleTwo.setType(Bundle.BundleType.TRANSACTION);
-					patient.setId(mpiId);
-
-					if (!hasMPI(searchBundle)) {
-						patient = mergeIdentifier(patient, searchBundle);
-						patient.getIdentifier().add(getNewMPIIdentifierWithMpiID(bundle, mpiId));
-					} else {
-						patient = mergeIdentifier(patient, searchBundle);
-					}
-
-					Bundle.BundleEntryComponent componentTwo = transactionBundleTwo.addEntry();
-					componentTwo.getRequest().setUrl(resource.fhirType() + "/" + mpiId).setMethod(Bundle.HTTPVerb.PUT);
-					componentTwo.setResource(patient);
-
-					String payload = fhirContext.newJsonParser().setPrettyPrint(true)
-							.encodeResourceToString(transactionBundleTwo);
-
-					Bundle bundle2ndResponse = firFhirConfig.getOpenCRFhirContext().transaction()
-							.withBundle(transactionBundleTwo).execute();
-
-					payload = fhirContext.newJsonParser().setPrettyPrint(true)
-							.encodeResourceToString(transactionBundleTwo);
-
-					System.err.println("DDD>>>>>> : payload" + payload);
-
-					return payload;
-				}
-			}
-
-		} else {
-			Bundle transactionBundle = new Bundle();
-			transactionBundle.setType(Bundle.BundleType.TRANSACTION);
-
-			for (BundleEntryComponent bundleEntry : bundle.getEntry()) {
-
-				Resource resource = (Resource) bundleEntry.getResource();
-
-				String mpiId = getMPI(bundle);
-				resource.setId(mpiId);
-				Bundle.BundleEntryComponent component = transactionBundle.addEntry();
-				component.getRequest().setUrl(resource.fhirType() + "/" + mpiId).setMethod(Bundle.HTTPVerb.PUT);
-				component.setResource(resource);
-
-				firFhirConfig.getOpenCRFhirContext().transaction().withBundle(transactionBundle).execute();
-
-				String payload = fhirContext.newJsonParser().setPrettyPrint(true)
-						.encodeResourceToString(transactionBundle);
-
-				return payload;
-			}
-
-		}
-		return null;
+	    return null;
 	}
+
+	// Extracted utility method for updating patient
+	private String updatePatientWithId(Resource resource, String mpiId) {
+	    Bundle updateTransaction = new Bundle();
+	    updateTransaction.setType(Bundle.BundleType.TRANSACTION);
+
+	    updateTransaction.addEntry()
+	        .setResource(resource)
+	        .getRequest().setMethod(Bundle.HTTPVerb.PUT)
+	        .setUrl(resource.fhirType() + "/" + mpiId);
+
+	    Bundle updateResponse = firFhirConfig.getOpenCRFhirContext().transaction()
+	            .withBundle(updateTransaction).execute();
+
+	    return fhirContext.newJsonParser().setPrettyPrint(true).encodeResourceToString(updateTransaction);
+	}
+
 
 	private Identifier copyMPIIdentifier(Bundle searchBundle) {
 		for (BundleEntryComponent bundleEntry : searchBundle.getEntry()) {
