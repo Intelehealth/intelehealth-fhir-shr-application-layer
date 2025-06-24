@@ -36,77 +36,77 @@ public class PatientMpiServiceImpl extends IHConstant implements PatientMpiServi
 
 	@Override
 	public String sendPatient(String bundleString) throws UnsupportedEncodingException {
-	    Bundle bundle = bundleService.convertToBundle(bundleString);
+		Bundle bundle = bundleService.convertToBundle(bundleString);
 
-	    // Case 1: If bundle already has MPI, just update
-	    if (hasMPI(bundle)) {
-	        String mpiId = getMPI(bundle);
-	        return updatePatientWithId(bundle, mpiId);
-	    }
+		// Case 1: If bundle already has MPI, just update
+		if (hasMPI(bundle)) {
+			String mpiId = getMPI(bundle);
+			for (BundleEntryComponent bundleEntry : bundle.getEntry()) {
+				Patient patient = (Patient) bundleEntry.getResource();
+				return updatePatientWithId(patient, mpiId);
+			}
+		}
 
-	    // Case 2 & 3: Process each entry
-	    for (BundleEntryComponent bundleEntry : bundle.getEntry()) {
-	        Patient patient = (Patient) bundleEntry.getResource();
+		// Case 2 & 3: Process each entry
+		for (BundleEntryComponent bundleEntry : bundle.getEntry()) {
+			Patient patient = (Patient) bundleEntry.getResource();
 
-	        Bundle searchBundle = searchBundle(patient);
-	        String mpiId = null;
+			Bundle searchBundle = searchBundle(patient);
+			String mpiId = null;
 
-	        // Extract MPI if available from search
-	        if (hasMPI(searchBundle)) {
-	            mpiId = getMPI(searchBundle);
-	        } else {
-	            mpiId = extractResourceId(searchBundle);
-	        }
+			// Extract MPI if available from search
+			if (hasMPI(searchBundle)) {
+				mpiId = getMPI(searchBundle);
+			} else {
+				mpiId = extractResourceId(searchBundle);
+			}
 
-	        // Case 2: MPI already exists from search
-	        if (mpiId != null) {
-	            patient.setId(mpiId);
-	            patient = mergeIdentifier(patient, searchBundle);
-	            if (!hasMPI(searchBundle)) {
-	                patient.getIdentifier().add(getNewMPIIdentifierWithMpiID(bundle, mpiId));
-	            }
-	            return updatePatientWithId(patient, mpiId);
-	        }
+			// Case 2: MPI already exists from search
+			if (mpiId != null) {
+				patient.setId(mpiId);
+				patient = mergeIdentifier(patient, searchBundle);
+				if (!hasMPI(searchBundle)) {
+					patient.getIdentifier().add(getNewMPIIdentifierWithMpiID(bundle, mpiId));
+				}
+				return updatePatientWithId(patient, mpiId);
+			}
 
-	        // Case 3: No MPI, need to create and then update with assigned ID
-	        Bundle createTransaction = new Bundle();
-	        createTransaction.setType(Bundle.BundleType.TRANSACTION);
-	        createTransaction.addEntry()
-	            .setResource(patient)
-	            .getRequest().setMethod(Bundle.HTTPVerb.POST).setUrl("Patient");
+			// Case 3: No MPI, need to create and then update with assigned ID
+			Bundle createTransaction = new Bundle();
+			createTransaction.setType(Bundle.BundleType.TRANSACTION);
+			createTransaction.addEntry().setResource(patient).getRequest().setMethod(Bundle.HTTPVerb.POST)
+					.setUrl("Patient");
 
-	        Bundle createResponse = firFhirConfig.getOpenCRFhirContext().transaction()
-	                .withBundle(createTransaction).execute();
+			Bundle createResponse = firFhirConfig.getOpenCRFhirContext().transaction().withBundle(createTransaction)
+					.execute();
 
-	        mpiId = extractResponseId(createResponse);
-	        if (mpiId == null) throw new RuntimeException("Failed to create patient and retrieve ID");
+			mpiId = extractResponseId(createResponse);
+			if (mpiId == null)
+				throw new RuntimeException("Failed to create patient and retrieve ID");
 
-	        // Update Patient with MPI identifier
-	        patient.setId(mpiId);
-	        patient.getIdentifier().add(getNewMPIIdentifierWithMpiID(bundle, mpiId));
+			// Update Patient with MPI identifier
+			patient.setId(mpiId);
+			patient.getIdentifier().add(getNewMPIIdentifierWithMpiID(bundle, mpiId));
 
-	        return updatePatientWithId(patient, mpiId);
-	    }
+			return updatePatientWithId(patient, mpiId);
+		}
 
-	    return null;
+		return null;
 	}
 
 	// Extracted utility method for updating patient
 	private String updatePatientWithId(Resource resource, String mpiId) {
-	    Bundle updateTransaction = new Bundle();
-	    updateTransaction.setType(Bundle.BundleType.TRANSACTION);
+		Bundle updateTransaction = new Bundle();
+		updateTransaction.setType(Bundle.BundleType.TRANSACTION);
 
-	    updateTransaction.addEntry()
-	        .setResource(resource)
-	        .getRequest().setMethod(Bundle.HTTPVerb.PUT)
-	        .setUrl(resource.fhirType() + "/" + mpiId);
+		updateTransaction.addEntry().setResource(resource).getRequest().setMethod(Bundle.HTTPVerb.PUT)
+				.setUrl(resource.fhirType() + "/" + mpiId);
 
-	    Bundle updateResponse = firFhirConfig.getOpenCRFhirContext().transaction()
-	            .withBundle(updateTransaction).execute();
+		Bundle updateResponse = firFhirConfig.getOpenCRFhirContext().transaction().withBundle(updateTransaction)
+				.execute();
 
-	    return fhirContext.newJsonParser().setPrettyPrint(true).encodeResourceToString(updateTransaction);
+		return fhirContext.newJsonParser().setPrettyPrint(true).encodeResourceToString(updateTransaction);
 	}
-
 
 	private Identifier copyMPIIdentifier(Bundle searchBundle) {
 		for (BundleEntryComponent bundleEntry : searchBundle.getEntry()) {
@@ -159,8 +159,8 @@ public class PatientMpiServiceImpl extends IHConstant implements PatientMpiServi
 					}
 
 					mpiIdentifier.getType().setText("MPI");
-					mpiIdentifier.setSystem(CENTRAL_FHIR+"/StructureDefinition/MPI");
-					mpiIdentifier.getType().getCoding().get(0).setSystem(CENTRAL_FHIR+"/CodeSystem/MPI");
+					mpiIdentifier.setSystem(CENTRAL_FHIR + "/StructureDefinition/MPI");
+					mpiIdentifier.getType().getCoding().get(0).setSystem(CENTRAL_FHIR + "/CodeSystem/MPI");
 					mpiIdentifier.getType().getCoding().get(0).setCode("MPI");
 					return mpiIdentifier;
 				}
