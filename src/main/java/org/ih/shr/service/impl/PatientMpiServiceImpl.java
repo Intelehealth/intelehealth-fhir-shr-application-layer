@@ -20,6 +20,7 @@ import org.ih.shr.utils.HttpWebClient;
 import org.ih.shr.utils.IHConstant;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.web.util.UriComponentsBuilder;
 
 import ca.uhn.fhir.context.FhirContext;
 
@@ -191,43 +192,34 @@ public class PatientMpiServiceImpl extends IHConstant implements PatientMpiServi
 		BundleEntryResponseComponent response = bundle.getEntryFirstRep().getResponse();
 		return response.getLocation().split("/")[1];
 	}
-
+	
 	private String makeQueryParam(Patient patient) {
-
-		if (patient == null)
-			return "";
-
-		StringBuilder sb = new StringBuilder();
-
-		if (patient.getBirthDate() != null) {
-			String dob = new SimpleDateFormat("yyyy-MM-dd").format(patient.getBirthDate()).toString();
-			sb.append("&birthdate=").append(dob);
-		}
-
-		if (patient.getGender() != null) {
-			sb.append("&gender=").append(patient.getGender().toString().toLowerCase());
-		}
-
-		if (patient.getName() != null && !patient.getName().isEmpty()) {
-			sb.append("&family=").append(patient.getName().get(0).getFamily());
-		}
-
-		if (patient.getName() != null && !patient.getName().isEmpty()) {
-			sb.append("&given=").append(patient.getName().get(0).getGivenAsSingleString());
-		}
-
-		if(patient.getTelecom()!=null) {
-			String telecom = patient.getTelecom().get(0).getValue();
-		    if (telecom != null) {
-		        sb.append("&telecom=").append(telecom);
-		    }
-		}
-		
-		if (sb.length() > 0)
-			return sb.substring(1);
-
-		return sb.toString();
-
+	    UriComponentsBuilder builder = UriComponentsBuilder.newInstance();
+	    
+	    if (patient.getBirthDate() != null) {
+	    	String dob = new SimpleDateFormat("yyyy-MM-dd").format(patient.getBirthDate()).toString();
+	        builder.queryParam("birthdate", dob);
+	    }
+	    
+	    if (patient.getNameFirstRep().getFamily() != null) {
+	        builder.queryParam("family", patient.getNameFirstRep().getFamily());
+	    }
+	    
+	    if (patient.getNameFirstRep().getGivenAsSingleString() != null) {
+	        builder.queryParam("given", patient.getNameFirstRep().getGivenAsSingleString());
+	    }
+	    
+	    if (patient.getGender() != null) {
+	        builder.queryParam("gender", patient.getGender().toCode());
+	    }
+	    
+//	    if (!patient.getTelecom().isEmpty()) {
+//	        String phoneNumber = patient.getTelecom().get(0).getValue();
+//	        builder.queryParam("telecom",phoneNumber);
+//	    }
+	    
+	    String query =  builder.build().getQuery();
+	    return query;
 	}
 
 	private Bundle searchBundle(Patient patient) throws UnsupportedEncodingException {
