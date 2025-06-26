@@ -1,6 +1,8 @@
 package org.ih.shr.utils;
 
 import java.io.UnsupportedEncodingException;
+import java.net.MalformedURLException;
+import java.net.URI;
 
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -14,10 +16,36 @@ public class HttpWebClient {
 
 	static ExchangeStrategies exchangeStrategies = ExchangeStrategies.builder()
 			.codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(10000000)).build();
-	
+
+	public static String searchPatient(String baseURL, URI uri, String username, String password)
+			throws UnsupportedEncodingException {
+
+		try {
+			System.out.println("BaseURL : " + baseURL);
+			System.out.println("Final URL: " + uri.toURL());
+		} catch (MalformedURLException e) {
+			e.printStackTrace();
+		}
+
+		WebClient webClient = WebClient.builder().baseUrl(baseURL)
+				.defaultHeaders(httpHeaders -> httpHeaders.setBasicAuth(username, password))
+				.exchangeStrategies(exchangeStrategies).build();
+		try {
+			return webClient.get().uri(uri)
+
+					.headers(httpHeaders -> httpHeaders.setBasicAuth(username, password)).retrieve()
+					.bodyToMono(String.class).block();
+		} catch (WebClientResponseException e) {
+			System.err.println(e);
+			System.err.println(e.getStatusCode());
+			System.err.println(e.getResponseBodyAsString());
+			throw e;
+		}
+	}
+
 	public static String get(String baseURL, String APIURL, String username, String password)
 			throws UnsupportedEncodingException {
-		System.err.println(baseURL + "/" + APIURL);
+
 		WebClient webClient = WebClient.builder().baseUrl(baseURL)
 				.defaultHeaders(httpHeaders -> httpHeaders.setBasicAuth(username, password))
 				.exchangeStrategies(exchangeStrategies).build();

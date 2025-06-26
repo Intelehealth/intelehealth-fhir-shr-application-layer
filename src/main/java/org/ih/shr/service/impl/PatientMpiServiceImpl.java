@@ -1,6 +1,7 @@
 package org.ih.shr.service.impl;
 
 import java.io.UnsupportedEncodingException;
+import java.net.URI;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.List;
@@ -193,39 +194,25 @@ public class PatientMpiServiceImpl extends IHConstant implements PatientMpiServi
 		return response.getLocation().split("/")[1];
 	}
 	
-	private String makeQueryParam(Patient patient) {
-	    UriComponentsBuilder builder = UriComponentsBuilder.newInstance();
-	    
-	    if (patient.getBirthDate() != null) {
-	    	String dob = new SimpleDateFormat("yyyy-MM-dd").format(patient.getBirthDate()).toString();
-	        builder.queryParam("birthdate", dob);
-	    }
-	    
-	    if (patient.getNameFirstRep().getFamily() != null) {
-	        builder.queryParam("family", patient.getNameFirstRep().getFamily());
-	    }
-	    
-	    if (patient.getNameFirstRep().getGivenAsSingleString() != null) {
-	        builder.queryParam("given", patient.getNameFirstRep().getGivenAsSingleString());
-	    }
-	    
-	    if (patient.getGender() != null) {
-	        builder.queryParam("gender", patient.getGender().toCode());
-	    }
-	    
-//	    if (!patient.getTelecom().isEmpty()) {
-//	        String phoneNumber = patient.getTelecom().get(0).getValue();
-//	        builder.queryParam("telecom",phoneNumber);
-//	    }
-	    
-	    String query =  builder.build().getQuery();
-	    return query;
+	private URI makeQueryParam(String baseURL, Patient patient) {
+		String dob = new SimpleDateFormat("yyyy-MM-dd").format(patient.getBirthDate()).toString();
+		
+		URI uri = UriComponentsBuilder.fromHttpUrl(baseURL)
+		        .queryParam("birthdate", dob)
+		        .queryParam("family", patient.getNameFirstRep().getFamily())
+		        .queryParam("given",patient.getNameFirstRep().getGivenAsSingleString())
+		        .queryParam("gender", patient.getGender().toCode())
+		        .queryParam("telecom", patient.getTelecom().get(0).getValue().replace("+", "%2B"))
+		        .build(true)
+		        .toUri();
+		return uri;
 	}
 
 	private Bundle searchBundle(Patient patient) throws UnsupportedEncodingException {
-		String queryParam = makeQueryParam(patient);
-
-		String response = HttpWebClient.get(opencrOpenhimURL + "/Patient", "?" + queryParam,
+		
+		URI uri = makeQueryParam(opencrOpenhimURL + "/Patient", patient);
+		
+		String response = HttpWebClient.searchPatient(opencrOpenhimURL + "/Patient", uri,
 				getOpencrOpenhimCredentials()[0], getOpencrOpenhimCredentials()[1]);
 
 		System.err.println("Search bundle response: >>>>> " + response);
