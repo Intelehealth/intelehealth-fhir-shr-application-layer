@@ -216,6 +216,14 @@ public class PatientMpiServiceImpl extends IHConstant implements PatientMpiServi
 			sb.append("&given=").append(patient.getName().get(0).getGivenAsSingleString());
 		}
 
+		if(patient.getTelecom()!=null) {
+			String telecom = patient.getTelecom().get(0).getValue();
+		    if (telecom != null) {
+		        telecom = telecom.replace("+", "%2B"); // Assign back to variable
+		        sb.append("&telecom=").append(telecom);
+		    }
+		}
+		
 		if (sb.length() > 0)
 			return sb.substring(1);
 
