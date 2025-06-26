@@ -152,7 +152,7 @@ public class PatientMpiServiceImpl extends IHConstant implements PatientMpiServi
 					Identifier mpiIdentifier = identifier.copy();
 					mpiIdentifier.setId(UUID.randomUUID().toString());
 					mpiIdentifier.setValue(mpiId);
-
+					mpiIdentifier.setExtension(new ArrayList<>());
 					// Ensure the coding list is initialized and has at least one element
 					if (mpiIdentifier.getType().getCoding().isEmpty()) {
 						mpiIdentifier.getType().addCoding(new Coding());
