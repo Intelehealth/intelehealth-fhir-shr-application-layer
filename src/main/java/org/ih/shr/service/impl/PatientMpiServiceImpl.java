@@ -199,8 +199,8 @@ public class PatientMpiServiceImpl extends IHConstant implements PatientMpiServi
 		
 		URI uri = UriComponentsBuilder.fromHttpUrl(baseURL)
 		        .queryParam("birthdate", dob)
-		        .queryParam("family", patient.getNameFirstRep().getFamily())
-		        .queryParam("given",patient.getNameFirstRep().getGivenAsSingleString())
+		        .queryParam("family", patient.getNameFirstRep().getFamily().replaceAll(" ", "%20"))
+		        .queryParam("given",patient.getNameFirstRep().getGivenAsSingleString().replaceAll(" ", "%20"))
 		        .queryParam("gender", patient.getGender().toCode())
 		        .queryParam("telecom", patient.getTelecom().get(0).getValue().replace("+", "%2B"))
 		        .build(true)
